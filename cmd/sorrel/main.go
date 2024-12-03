@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"os/exec"
 	"regexp"
 	"strings"
 
@@ -11,15 +12,46 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+func setupTemporaryLog() (*os.File, error) {
+	// Create a temporary file for logging
+	tempFile, err := os.CreateTemp("", "sorrel-*.log")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temporary log file: %w", err)
+	}
+
+	// Redirect log output to the file
+	os.Stderr = tempFile
+	return tempFile, nil
+}
+
 func main() {
+	// Set up temporary logging
+	logFile, err := setupTemporaryLog()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error setting up logging:", err)
+		os.Exit(1)
+	}
+	logFile.Close()
+
+	// Open a new kitty instance if not run in an existing one
+	if os.Getenv("KITTY_PID") == "" {
+		// Not inside Kitty, spawn a new Kitty window
+		cmd := exec.Command("kitty", "--class", "sorrel", "sh", "-c", "sorrel")
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			fmt.Fprintln(os.Stderr, "Failed to launch Kitty window:", err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	// Get the clipboard content
 	text, err := clipboard.ReadAll()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error accessing clipboard:", err)
 		text = "" // Fallback to empty if clipboard fails
 	}
-
-	fmt.Println("Clipboard content:", text)
 
 	// Validate YouTube URL
 	isValid, timestamp, err := validateYouTubeURL(text)
