@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/atotto/clipboard"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 func main() {
@@ -15,7 +16,7 @@ func main() {
 	text, err := clipboard.ReadAll()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error accessing clipboard:", err)
-		return
+		text = "" // Fallback to empty if clipboard fails
 	}
 
 	fmt.Println("Clipboard content:", text)
@@ -24,18 +25,27 @@ func main() {
 	isValid, timestamp, err := validateYouTubeURL(text)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Validation error:", err)
-		return
-	}
-
-	if isValid {
+		text = "" // Clear the text if validation fails
+		timestamp = ""
+	} else if !isValid {
+		fmt.Println("Invalid YouTube URL.")
+		text = "" // Clear the text for invalid URLs
+		timestamp = ""
+	} else {
 		fmt.Println("Valid YouTube URL detected.")
 		if timestamp != "" {
 			fmt.Printf("URL contains timestamp: %s\n", timestamp)
 		} else {
 			fmt.Println("URL does not contain a timestamp.")
+			timestamp = ""
 		}
-	} else {
-		fmt.Println("Invalid YouTube URL.")
+	}
+
+	// Start the Bubble Tea UI
+	p := tea.NewProgram(initialModel(text, timestamp))
+	if err := p.Start(); err != nil {
+		fmt.Fprintln(os.Stderr, "Error starting UI:", err)
+		os.Exit(1)
 	}
 }
 
