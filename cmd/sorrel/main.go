@@ -23,30 +23,24 @@ func main() {
 
 	// Validate YouTube URL
 	isValid, timestamp, err := validateYouTubeURL(text)
-	if err != nil {
+	if err != nil || !isValid {
 		fmt.Fprintln(os.Stderr, "Validation error:", err)
-		text = "" // Clear the text if validation fails
-		timestamp = ""
-	} else if !isValid {
-		fmt.Println("Invalid YouTube URL.")
-		text = "" // Clear the text for invalid URLs
-		timestamp = ""
-	} else {
-		fmt.Println("Valid YouTube URL detected.")
-		if timestamp != "" {
-			fmt.Printf("URL contains timestamp: %s\n", timestamp)
-		} else {
-			fmt.Println("URL does not contain a timestamp.")
-			timestamp = ""
-		}
+		text = ""      // Clear the text for invalid or failed validation
+		timestamp = "" // Clear the timestamp as well
 	}
 
 	// Start the Bubble Tea UI
 	p := tea.NewProgram(initialModel(text, timestamp))
-	if err := p.Start(); err != nil {
-		fmt.Fprintln(os.Stderr, "Error starting UI:", err)
+	finalModel, err := p.Run()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error running UI:", err)
 		os.Exit(1)
 	}
+
+	m := finalModel.(model)
+	fmt.Println("Final URL:", m.urlInput.Value())
+	fmt.Println("Start Timestamp:", m.startTimestamp.Value())
+	fmt.Println("End Timestamp:", m.endTimestamp.Value())
 }
 
 // validateYouTubeURL checks if the URL is a valid YouTube link and extracts timestamp if present

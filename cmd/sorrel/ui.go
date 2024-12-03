@@ -23,17 +23,30 @@ func initialModel(initialURL, initialTimestamp string) model {
 	url.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 
 	start := textinput.New()
-	start.Placeholder = "Enter start timestamp (e.g., 00:01:30)"
+	start.Placeholder = "Enter start timestamp in seconds (e.g., 200)"
 	start.SetValue(initialTimestamp)
 
 	end := textinput.New()
-	end.Placeholder = "Enter end timestamp or duration"
+	end.Placeholder = "Enter end timestamp in seconds or a '+' symbol and duration (e.g., 240 or +40)"
+
+	// Determine which field to focus initially
+	focusedIdx := 0
+	if initialURL == "" {
+		url.Focus()
+		focusedIdx = 0
+	} else if initialTimestamp == "" {
+		start.Focus()
+		focusedIdx = 1
+	} else {
+		end.Focus()
+		focusedIdx = 2
+	}
 
 	return model{
 		urlInput:        url,
 		startTimestamp:  start,
 		endTimestamp:    end,
-		focusedInputIdx: 0, // Start with URL input focused
+		focusedInputIdx: focusedIdx,
 	}
 }
 
@@ -45,7 +58,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+c", "q":
+		case "ctrl+c", "ctrl+q":
 			return m, tea.Quit
 		case "tab":
 			m.focusedInputIdx = (m.focusedInputIdx + 1) % 3
@@ -53,6 +66,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "shift+tab":
 			m.focusedInputIdx = (m.focusedInputIdx - 1 + 3) % 3
 			m.updateFocus()
+		case "enter":
+			return m, tea.Quit
 		}
 	}
 
@@ -86,7 +101,7 @@ func (m *model) updateFocus() {
 
 func (m model) View() string {
 	return fmt.Sprintf(
-		"URL: %s\n\nStart Timestamp: %s\n\nEnd Timestamp: %s\n\n[Tab to switch, q to quit]",
+		"URL: %s\n\nStart Timestamp: %s\n\nEnd Timestamp: %s\n\n[Tab/Shift+Tab to switch, ctrl+q/c to quit, Enter to confirm]",
 		m.urlInput.View(),
 		m.startTimestamp.View(),
 		m.endTimestamp.View(),
